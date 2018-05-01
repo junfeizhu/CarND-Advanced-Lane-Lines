@@ -1,39 +1,47 @@
-## Advanced Lane Finding
-[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
+# Advanced Lane Line Project
+## 1.Camera Calibration
+The first step of this project is to calibrate the camera. I used the chessboard iamges provided to do the calibration. The mtx and dist arrays are defined to be global variables in python since we need to use them in the image processing pipeline later. An example of the original test image and the undistorted image are shown below:
 
+![test_undist_image](https://raw.githubusercontent.com/junfeizhu/CarND-Advanced-Lane-Lines/master/output_images/calibration_image.png)
 
-In this project, your goal is to write a software pipeline to identify the lane boundaries in a video, but the main output or product we want you to create is a detailed writeup of the project.  Check out the [writeup template](https://github.com/udacity/CarND-Advanced-Lane-Lines/blob/master/writeup_template.md) for this project and use it as a starting point for creating your own writeup.  
+## 2.Color and gradient threshold
+After lots of experiments, to find out the lanes, I applied two color filter and one x-direction sobel filter to the undistorted image. This idea is also inspired by this [excellent post](https://chatbotslife.com/advanced-lane-line-project-7635ddca1960). Since the lanes are usually yellow and white, I first converted the image to an HSV color space and applied one yellow color filter and one white color filter to the image. Then I applied the x-direction sobel filter to the image. Finally, I did a bitwise addition of these three images to get the final binary image:
 
-Creating a great writeup:
----
-A great writeup should include the rubric points as well as your description of how you addressed each point.  You should include a detailed description of the code used in each step (with line-number references and code snippets where necessary), and links to other supporting documents or external references.  You should include images in your writeup to demonstrate how your code works with examples.  
+![thre_image](https://raw.githubusercontent.com/junfeizhu/CarND-Advanced-Lane-Lines/master/output_images/thre_image.png)
 
-All that said, please be concise!  We're not looking for you to write a book here, just a brief description of how you passed each rubric point, and references to the relevant code :). 
+## 3.Crop image
+Next, I cropped the image to get rid of the parts not needed for lane detectation:
 
-You're not required to use markdown for your writeup.  If you use another method please just submit a pdf of your writeup.
+![cropped_image](https://raw.githubusercontent.com/junfeizhu/CarND-Advanced-Lane-Lines/master/output_images/cropped_image.png)
 
-The Project
----
+## 4.Perspective Transformation
+Next I did a perspective transformation to the image. To do that, I need to choose four source point. By looking at the straight line image, I chose these four points:[585, 450], [205, 720], [1100, 720], [695, 450].
 
-The goals / steps of this project are the following:
+![straight](https://raw.githubusercontent.com/junfeizhu/CarND-Advanced-Lane-Lines/master/output_images/straight.png)
 
-* Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
-* Apply a distortion correction to raw images.
-* Use color transforms, gradients, etc., to create a thresholded binary image.
-* Apply a perspective transform to rectify binary image ("birds-eye view").
-* Detect lane pixels and fit to find the lane boundary.
-* Determine the curvature of the lane and vehicle position with respect to center.
-* Warp the detected lane boundaries back onto the original image.
-* Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
+I applied the perspective transformation to the binary image and got the following bird eye image:
 
-The images for camera calibration are stored in the folder called `camera_cal`.  The images in `test_images` are for testing your pipeline on single frames.  If you want to extract more test images from the videos, you can simply use an image writing method like `cv2.imwrite()`, i.e., you can read the video in frame by frame as usual, and for frames you want to save for later you can write to an image file.  
+![birdeye](https://raw.githubusercontent.com/junfeizhu/CarND-Advanced-Lane-Lines/master/output_images/birdeye.png)
 
-To help the reviewer examine your work, please save examples of the output from each stage of your pipeline in the folder called `output_images`, and include a description in your writeup for the project of what each image shows.    The video called `project_video.mp4` is the video your pipeline should work well on.  
+## 5. Lane detectation
+Next I use **detect_lines_sliding_window()** function and **detect_lines()** function to detect the line. These two functions are almost the same as the functions provided in the course except that I added some codes to check whether there is a fit in the image or not. I added these code because when applied to the project video, I did have some cases that there are no fits for the image given. In this case, I will only return an empty array for further action later. One example was shown in the following image:
 
-The `challenge_video.mp4` video is an extra (and optional) challenge for you if you want to test your pipeline under somewhat trickier conditions.  The `harder_challenge.mp4` video is another optional challenge and is brutal!
+![final](https://raw.githubusercontent.com/junfeizhu/CarND-Advanced-Lane-Lines/master/output_images/final.png)
 
-If you're feeling ambitious (again, totally optional though), don't stop there!  We encourage you to go out and take video of your own, calibrate your camera and show us how you would implement this project from scratch!
+## 6.Curvature
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
+Next, I computed the curvature for both left lane and right lane. I also computed the offset.
 
+## 7. Final processor
+Finally, I put every step together to make the final image processor. As metioned before, it is possible that the algorithm cannot get a polynomial fit for the given image. If this is the case, I will just use the fit from the previous image instead. One snapshot of the video is shown below:
+
+![video_snapshot](https://raw.githubusercontent.com/junfeizhu/CarND-Advanced-Lane-Lines/master/output_images/video_snapshot.png)
+
+## 8.Discussion
+When doing this project, the most difficult part I have is to choose what kinds of filter to use to detect the lane and how to decide the thresholds for these filters. This needed lots of experiments. I also read lots of posts to get inspiration about these filters.
+
+When applied this processor to the challenge video, it didn't work well:
+
+![challenge](https://raw.githubusercontent.com/junfeizhu/CarND-Advanced-Lane-Lines/master/output_images/challenge.png)
+
+Compared to the project video, the vehicle in the challenge video is very close to the isolation belt in the road. The processor may detect the belt and its shade as a lane. Thus it did not work well.
